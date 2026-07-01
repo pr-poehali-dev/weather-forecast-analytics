@@ -52,6 +52,10 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				storm: 'hsl(var(--storm))',
+				hail: 'hsl(var(--hail))',
+				lightning: 'hsl(var(--lightning))',
+				wind: 'hsl(var(--wind))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
