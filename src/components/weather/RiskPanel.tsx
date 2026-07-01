@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import Icon from '@/components/ui/icon';
+import func2url from '../../../backend/func2url.json';
 
-const risks = [
+const baseRisks = [
   {
+    id: 'tornado',
     name: 'Смерчи',
     icon: 'Tornado',
     level: 'Высокий',
@@ -10,6 +13,7 @@ const risks = [
     desc: 'Условия для суперячеек',
   },
   {
+    id: 'hail',
     name: 'Град',
     icon: 'CloudHail',
     level: 'Средний',
@@ -18,6 +22,7 @@ const risks = [
     desc: 'Крупный град до 3 см',
   },
   {
+    id: 'wind',
     name: 'Шквалистый ветер',
     icon: 'Wind',
     level: 'Высокий',
@@ -26,16 +31,61 @@ const risks = [
     desc: 'Порывы до 25 м/с',
   },
   {
+    id: 'lightning',
     name: 'Молнии',
     icon: 'Zap',
-    level: 'Экстремальный',
-    value: 92,
+    level: '—',
+    value: 0,
     color: 'lightning',
-    desc: 'Плотность 40 разрядов/км²',
+    desc: 'Данные Blitzortung по ЮФО',
   },
-] as const;
+];
+
+interface LightningData {
+  total: number;
+  source: string;
+  topCities: { name: string; count: number }[];
+}
+
+function levelByCount(n: number): string {
+  if (n >= 60) return 'Экстремальный';
+  if (n >= 30) return 'Высокий';
+  if (n >= 10) return 'Средний';
+  if (n > 0) return 'Низкий';
+  return 'Спокойно';
+}
 
 const RiskPanel = () => {
+  const [lightning, setLightning] = useState<LightningData | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(func2url.lightning);
+        setLightning((await res.json()) as LightningData);
+      } catch {
+        /* ignore */
+      }
+    };
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  const risks = baseRisks.map((r) => {
+    if (r.id !== 'lightning') return r;
+    const total = lightning?.total ?? 0;
+    const top = lightning?.topCities?.[0];
+    return {
+      ...r,
+      value: Math.min(100, total * 2),
+      level: levelByCount(total),
+      desc: top
+        ? `${total} разрядов · пик: ${top.name}`
+        : `${total} разрядов по ЮФО`,
+    };
+  });
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {risks.map((r, idx) => (
@@ -85,13 +135,19 @@ const RiskPanel = () => {
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full transition-all duration-700"
               style={{
                 width: `${r.value}%`,
                 background: `hsl(var(--${r.color}))`,
               }}
             />
           </div>
+          {r.id === 'lightning' && (
+            <p className="mt-2 flex items-center gap-1 text-[10px] text-lightning">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-lightning" />
+              LIVE · обновление раз в минуту
+            </p>
+          )}
         </div>
       ))}
     </div>
